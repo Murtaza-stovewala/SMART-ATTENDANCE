@@ -103,7 +103,7 @@ form.addEventListener("submit", async (e) => {
 
     if (response.ok) {
       alert("✅ Registration successful");
-      window.location.href = "../dashboard/dashboard.html";
+      window.location.href = "../login/login.html";
     } else {
       alert(data.message || "Registration failed");
     }
