@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("studentId", data.student._id); // ✅ Store ID for dashboard
         console.log("✅ studentId saved:", data.student._id);
         alert("Login successful!");
-        window.location.href = "/student/dashboard/dashboard.html";
+        window.location.href = "student/dashboard/dashboard.html";
       } else {
         alert(data.message || "Login failed");
       }
