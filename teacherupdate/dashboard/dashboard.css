@@ -69,13 +69,24 @@ button {
 button:hover {
   background-color: #bfa064 ;
 } */
+.welcome {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.welcome h1 {
+  font-size: 2rem;
+  color: #293b61;
+}
 
+.welcome h1 span {
+  color: #bfa064;
+}
 .attendance-action {
   margin: 2rem 0;
   text-align: center;
 }
 .attendance-action h2 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: #293b61;
   text-align: center;
 }
@@ -83,7 +94,7 @@ button:hover {
   color: #bfa064;
 }
 
-.mark-attendance-btn {
+.mark-attendance-btn { 
   display: inline-block;
   background-color: #293b61;
   color: white;
