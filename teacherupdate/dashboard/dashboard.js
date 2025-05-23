@@ -1,87 +1,123 @@
-// generateCode.js with backend integration
-let countdownTimer;
-let generatedCode = "";
+document.addEventListener("DOMContentLoaded", () => {
+  const teacherId = localStorage.getItem("teacherId");
+  const teacherName = localStorage.getItem("teacherName");
 
-function generateCode() {
-  generatedCode = Math.floor(100000 + Math.random() * 900000);
-  const codeBox = document.getElementById("codeDisplay");
-
-  codeBox.innerHTML =
-    "<strong>Attendance Code:</strong> " +
-    generatedCode +
-    "<br><small>Valid for: <span id='timer'>10:00</span> minutes</small>";
-
-  clearInterval(countdownTimer);
-  startCountdown(600); // 10 minutes
-}
-
-function startCountdown(duration) {
-  let timer = duration;
-  const display = document.getElementById("timer");
-
-  countdownTimer = setInterval(() => {
-    const minutes = Math.floor(timer / 60);
-    const seconds = timer % 60;
-
-    display.textContent =
-      minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-
-    if (--timer < 0) {
-      clearInterval(countdownTimer);
-      document.getElementById("codeDisplay").innerHTML =
-        "<strong>Code expired</strong>";
-    }
-  }, 1000);
-}
-
-function getLocationAndGenerateCode() {
-  const locationBox = document.getElementById("locationInfo");
-
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
+  // 🔐 Redirect if not logged in
+  if (!teacherId) {
+    alert("Not logged in. Redirecting to login...");
+    window.location.href = "/teacherupdate/login/login.html";
     return;
   }
 
-  locationBox.textContent = "Fetching location...";
+  // 👤 Show teacher name
+  const nameSpan = document.getElementById("teacher-name");
+  if (nameSpan) {
+    nameSpan.textContent = teacherName || "Teacher";
+  }
 
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const latitude = position.coords.latitude.toFixed(5);
-      const longitude = position.coords.longitude.toFixed(5);
-
-      locationBox.textContent =
-        "Location Acquired ✅ (Lat: " + latitude + ", Lng: " + longitude + ")";
-
-      console.log("Teacher Location:", latitude, longitude);
-
-      generateCode();
-      sendCodeToServer(generatedCode, parseFloat(latitude), parseFloat(longitude));
-    },
-    (error) => {
-      locationBox.textContent = "❌ Failed to fetch location.";
-      alert("Please allow location access to generate code.");
-      console.error(error);
-    }
-  );
-}
-
-function sendCodeToServer(code, latitude, longitude) {
-  fetch("http://localhost:5000/api/code/generate", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ code, latitude, longitude }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("✅ Code stored in MongoDB:", data);
+  // 👥 Fetch and display live attendance list
+  fetch(`https://smart-attendance-system-2p2j.onrender.com/api/attendance/live/${teacherId}`)
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to fetch attendance");
+      return res.json();
     })
-    .catch((err) => {
-      console.error("❌ Failed to store code in MongoDB:", err);
+    .then(data => {
+      const tbody = document.querySelector("#liveTable tbody");
+      tbody.innerHTML = "";
+
+      if (data.success && data.attendance.length > 0) {
+        data.attendance.forEach(record => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${record.studentId}</td>
+            <td>${record.name}</td>
+            <td class="${record.status.toLowerCase()}">${record.status}</td>
+            <td><button class="markAbsent">Mark Absent</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+        attachAbsentHandlers();
+      } else {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No attendance yet</td></tr>`;
+      }
+    })
+    .catch(err => console.error("Live attendance error:", err));
+
+  // ❌ Attach "Mark Absent" handler
+  function attachAbsentHandlers() {
+    document.querySelectorAll(".markAbsent").forEach(button => {
+      button.addEventListener("click", e => {
+        const row = e.target.closest("tr");
+        const studentId = row.children[0].textContent;
+
+        fetch("https://smart-attendance-system-2p2j.onrender.com/api/attendance/mark-absent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teacherId, studentId })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              row.children[2].textContent = "Absent";
+              row.children[2].className = "absent";
+              e.target.disabled = true;
+            } else {
+              alert("❌ Failed to mark absent.");
+            }
+          })
+          .catch(err => console.error("Mark absent error:", err));
+      });
     });
+  }
+
+  // 📝 Fetch override requests (optional)
+  fetch(`https://smart-attendance-system-2p2j.onrender.com/api/overrides/${teacherId}`)
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.querySelector("#overrideTable tbody");
+      tbody.innerHTML = "";
+
+      if (data.success && data.overrides.length > 0) {
+        data.overrides.forEach(entry => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${entry.studentId}</td>
+            <td>${entry.name}</td>
+            <td>${entry.reason}</td>
+            <td>${new Date(entry.timestamp).toLocaleString()}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No overrides yet</td></tr>`;
+      }
+    })
+    .catch(err => console.error("Override fetch error:", err));
+});
+
+// 🔓 Logout
+function logout() {
+  localStorage.removeItem("teacherId");
+  localStorage.removeItem("teacherName");
+  localStorage.removeItem("teacherToken");
+  window.location.href = "/teacherupdate/login/login.html";
 }
 
-document
-  .getElementById("generateCodeBtn")
-  .addEventListener("click", getLocationAndGenerateCode);
+// 📤 Export to Excel
+function exportToExcel() {
+  const table = document.getElementById("liveTable");
+  if (!table) return;
+
+  const rows = Array.from(table.rows);
+  const csv = rows.map(row =>
+    Array.from(row.cells).map(cell => `"${cell.textContent.trim()}"`).join(",")
+  ).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `attendance_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
