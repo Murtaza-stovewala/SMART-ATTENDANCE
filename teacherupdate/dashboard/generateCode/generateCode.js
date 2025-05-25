@@ -106,7 +106,7 @@ async function sendCodeToServer(code, latitude, longitude) {
     });
 
     const data = await res.json();
-    console.log("✅ Code stored in MongoDB:", data);
+    console.log("✅ Code stored in MongoDB:", data);  
 
     // Show dashboard redirect button
     const goToDashboardBtn = document.getElementById("goToDashboardBtn");
