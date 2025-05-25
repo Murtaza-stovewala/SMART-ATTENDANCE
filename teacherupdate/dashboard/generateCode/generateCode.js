@@ -97,7 +97,7 @@ function getLocationAndGenerateCode() {
 // }
 async function sendCodeToServer(code, latitude, longitude) {
   try {
-      const res = await fetch("https://smart-attendance-face.onrender.com/api/generateCode/generate", { 
+      const res = await fetch("https://smart-attendance-system-2p2j.onrender.com/api/generateCode/generate", { 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
